@@ -1,0 +1,2 @@
+# sudoku
+python logic sudoku
