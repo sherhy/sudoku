@@ -128,7 +128,8 @@ class TrainingBoard(Board):
 	def arr2grid(self, arr):
 		for i in range(9):
 			self.grid[i] = [int(x) for x in arr[0][i*9:i*9+9]]
-			self.answer[i] = [int(x) for x in arr[1][i*9:i*9+9]]
+			if len(arr)==2:
+				self.answer[i] = [int(x) for x in arr[1][i*9:i*9+9]]
 
 	def createBoard(self):
 		#make question board (as hard as solving one)
@@ -138,7 +139,8 @@ class TrainingBoard(Board):
 class Candidate(Board):
 	def __init__(self, board=None):
 		super(Candidate, self).__init__()
-		self.maybe = [[{1,2,3,4,5,6,7,8,9} for i in range(1,10)] for i in range(9)]
+		#1-9 for each index
+		self.maybe = [[{x for x in range(1,10)} for i in range(9)] for i in range(9)]
 
 		if board != None:
 			self.grid = board.grid
@@ -165,6 +167,29 @@ class Candidate(Board):
 				if a != 0:
 					self.eliminate(a, [i,j])
 
+	def elimGrid(self, ind):
+		#solve for unique in block
+		row = ind[0]
+		col = ind[1]
+		block_candidate = []
+		
+		#collect candidate
+		for i in range(3):
+			for j in range(3):
+				block_candidate += list(self.maybe[row+i][col+j])
+
+		#change candidate set to which is unique in block
+		for _ in range(1,10):
+			if block_candidate.count(i) == 1:
+				for i in range(3):
+					for j in range(3):
+						if self.maybe[row+i][col+j].intersection({_}):
+							self.maybe[row+i][col+j] = {_}
+
+	def elimGridAll(self):
+		for i in range(3):
+			for j in range(3):
+				self.elimGrid([i*3,j*3])
 
 
 class SudokuSolver():
@@ -175,13 +200,28 @@ class SudokuSolver():
 		self.solution = self.candidate.deepcopy()
 
 	def solve(self):
-		self.candidate.elimAll(self.solution)
+		counter = 0
+		while True:
+			#need a loop which stops when maybe grid doesn't change anymore
+			counter +=1
+			print(counter)
+			mock = copy.deepcopy(self.candidate.maybe)
+			self.candidate.elimAll(self.solution)
+			self.candidate.elimGridAll()
+			self.update()
+			if mock == self.candidate.maybe: break
+
+
 
 	def update(self):
-		#find and update unique
+		#find and update unique if only candidate left
 		for i in range(9):
 			for j in range(9):
 				if len(self.candidate.maybe[i][j]) ==1: 
 					self.solution.grid[i][j] = sum(list(self.candidate.maybe[i][j]))
+
+		
+
+
 
 
