@@ -33,7 +33,7 @@ class Board():
 			else:
 				print()
 
-	#for making board via array inputs per rows
+	#for making board via array inputs per row
 	def inputGrid(self):
 		for r in range(len(self.grid)):
 			print('row')
@@ -71,7 +71,6 @@ class Board():
 		block = []
 		for i in range(row, row+3):
 			block.append(self.grid[i][col:col+3])
-		# print(block)
 
 		duplicates =[]
 		for row in block:
@@ -98,11 +97,12 @@ class Board():
 		if a and b and c: return True
 		return False
 
-	def isLglSdk(self):
-		for row in self.grid:
-			for i in row:
-				if math.isnan(i): 
-					return False
+	def isLglSdk(self, option = 1):
+		if option:
+			for row in self.grid:
+				for i in row:
+					if math.isnan(i) or i==0: 
+						return False
 
 		for i in range(9):
 			if not self.isLglRow( i): return False
@@ -145,51 +145,32 @@ class Candidate(Board):
 		if board != None:
 			self.grid = board.grid
 		
-	def eliminate(self, a, ind):
-		#eliminate candidate from row, col, block
+	def elimRowCol(self, a, ind):
+		#eliminate candidate from row & col
 		for i in range(9):
 			self.maybe[ind[0]][i].discard(a)
-		for i in range(9):
 			self.maybe[i][ind[1]].discard(a)
-		row = (ind[0]//3)*3
-		col = (ind[1]//3)*3
+
+		self.maybe[ind[0]][ind[1]] = {a}
+
+	def elimBlk(self, a, ind):
+		#eliminate candidate from block
+		row, col = (ind[0]//3)*3, (ind[1]//3)*3
 		for i in range(3):
 			for j in range(3):
-				self.maybe[row + i][col + i].discard(a)
+				self.maybe[row + i][col + j].discard(a)
 
 		self.maybe[ind[0]][ind[1]] = {a}
 	
 	def elimAll(self, board):
-		#look at each provided answer and eliminate
+		#look at solution and eliminate candidate
 		for i in range(9):
 			for j in range(9):
 				a = board.grid[i][j]
 				if a != 0:
-					self.eliminate(a, [i,j])
-
-	def elimGrid(self, ind):
-		#solve for unique in block
-		row = ind[0]
-		col = ind[1]
-		block_candidate = []
-		
-		#collect candidate
-		for i in range(3):
-			for j in range(3):
-				block_candidate += list(self.maybe[row+i][col+j])
-
-		#change candidate set to which is unique in block
-		for _ in range(1,10):
-			if block_candidate.count(i) == 1:
-				for i in range(3):
-					for j in range(3):
-						if self.maybe[row+i][col+j].intersection({_}):
-							self.maybe[row+i][col+j] = {_}
-
-	def elimGridAll(self):
-		for i in range(3):
-			for j in range(3):
-				self.elimGrid([i*3,j*3])
+					self.elimBlk(a, [i,j])
+					self.elimRowCol(a, [i,j])
+	
 
 
 class SudokuSolver():
@@ -199,26 +180,65 @@ class SudokuSolver():
 		self.candidate = Candidate(board) #to use when solving
 		self.solution = self.candidate.deepcopy()
 
+	def oneLoop(self):
+		self.candidate.elimAll(self.solution)
+
+		self.logicBlkAll()
+		self.updateGrid()
+
+		# self.candidate.print(2)
+		# self.solution.print()
+
 	def solve(self):
 		counter = 0
 		while True:
 			#need a loop which stops when maybe grid doesn't change anymore
 			counter +=1
-			print(counter)
+			if counter > 10000: print(counter)
+
 			mock = copy.deepcopy(self.candidate.maybe)
-			self.candidate.elimAll(self.solution)
-			self.candidate.elimGridAll()
-			self.update()
+			self.oneLoop()
 			if mock == self.candidate.maybe: break
 
+	def logicBlk(self, ind):
+		#solve for unique in block
+		row, col = ind[0], ind[1]
+		block_maybe = []
+		
+		#collect candidate
+		for i in range(3):
+			for j in range(3):
+				block_maybe += list(self.candidate.maybe[row+i][col+j])
 
+		#change candidate set to which is unique in block
+		for _ in range(1,10):
+			if block_maybe.count(_) == 1:
+				for i in range(3):
+					for j in range(3):
+						if self.candidate.maybe[row+i][col+j].intersection({_}):
+							self.candidate.maybe[row+i][col+j] = {_}
+							self.solution.grid[row+i][col+j] = _
 
-	def update(self):
-		#find and update unique if only candidate left
+	def logicBlkAll(self):
+		for i in range(3):
+			for j in range(3):
+				self.logicBlk([i*3,j*3])
+
+	def updateGrid(self):
 		for i in range(9):
 			for j in range(9):
-				if len(self.candidate.maybe[i][j]) ==1: 
-					self.solution.grid[i][j] = sum(list(self.candidate.maybe[i][j]))
+				if len(self.candidate.maybe[i][j]) ==1:
+					digit = sum(list(self.candidate.maybe[i][j]))
+					row = [self.candidate.maybe[x][j] for x in range(9) if x!=i] 
+					col = [self.candidate.maybe[i][x] for x in range(9) if x!=j] 
+
+					rowCheck = list(filter(lambda i: i.intersection({digit}), row))			
+					colCheck = list(filter(lambda i: i.intersection({digit}), col))
+					# print([i,j], digit, rowCheck, colCheck)
+					if rowCheck == [] and colCheck==[]: 
+						#check for conflicting candidate
+						self.solution.grid[i][j] = digit
+
 
 		
 
