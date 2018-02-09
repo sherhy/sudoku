@@ -1,3 +1,5 @@
+#should write some concepts, dates, yada yada..
+
 import copy, math, random
 
 class Board():
@@ -13,35 +15,28 @@ class Board():
 		for row in option[opt]:
 			for i in row:
 				maxChar = max([len(str(i)) , maxChar])
+
 		formatSpecInt = '%'+str(maxChar)+'d'
 		formatSpecStr = '%'+str(maxChar)+'s'
 		width = ' '
-		rCount = 0
-		cCount = 0
+		rCount, cCount = 0, 0
 		for row in option[opt]:
 			for i in row:
-				if isinstance(i, int):
-					print(formatSpecInt%i, end=width)
+				if isinstance(i, int): print(formatSpecInt%i, end=width)
 				else: print(formatSpecStr%i, end=width)
 				
 				cCount +=1
-				if cCount %3==0:
-					print(end=width)
+				if cCount %3==0: print(end=width)
 			rCount +=1
-			if rCount%3==0: 
-				print('\n')
-			else:
-				print()
-
-	#for making board via array inputs per row
+			if rCount%3==0: print('\n')
+			else: print()
+	
 	def inputGrid(self):
+		#for making board via array inputs per row
 		for r in range(len(self.grid)):
 			print('row')
 			query = [int(x) for x in input().split(',')]
-			row = []
-			for i in query:
-				if i == 0: row.append(float('nan'))
-				else: row.append(i)
+			row = [0 if (i ==0 or i == float('nan')) else i for i in query]
 			self.grid[r] = row
 
 	def deepcopy(self):
@@ -91,6 +86,7 @@ class Board():
 		return False
 
 	def isLglSdk(self, option = 0):
+		#is legal sudoku, option = 1 being strict
 		if option:
 			for row in self.grid:
 				for i in row:
@@ -105,15 +101,11 @@ class Board():
 			for j in range(3):
 				if not self.isLglBlk( [i,j]): return False
 		return True
-	
-
-
-
-
-
-
-
-
+#
+#
+#
+#
+#
 class TrainingBoard(Board):
 	def __init__(self, arr = None):
 		super(TrainingBoard, self).__init__()
@@ -126,38 +118,32 @@ class TrainingBoard(Board):
 	def arr2grid(self, arr):
 		for i in range(9):
 			self.grid[i] = [int(x) for x in arr[0][i*9:i*9+9]]
-			if len(arr)==2:
-				self.answer[i] = [int(x) for x in arr[1][i*9:i*9+9]]
+			self.answer[i] = [int(x) for x in arr[1][i*9:i*9+9]] if len(arr)==2 else []
 
 	def createBoard(self):
 		#make question board (as hard as solving one)
 		pass
-
-
-
-
-
-
-
-
-
-
+#
+#
+#
+#
+#
 class Candidate(Board):
 	def __init__(self, board=None):
 		super(Candidate, self).__init__()
 		#1-9 for each index
 		self.maybe = [[{x for x in range(1,10)} for i in range(9)] for i in range(9)]
 
-		if board != None:
-			self.grid = board.grid
-		
-	def elimRowCol(self, a, ind, replace=True):
-		#eliminate candidate from row & col
+		if board != None: self.grid = board.grid
+
+	def elimAll(self, board):
+		#look at solution and eliminate candidate
 		for i in range(9):
-			self.maybe[ind[0]][i].discard(a)
-			self.maybe[i][ind[1]].discard(a)
-		if replace:
-			self.maybe[ind[0]][ind[1]] = {a}
+			for j in range(9):
+				a = board.grid[i][j]
+				if a != 0:
+					self.elimBlk(a, [i,j])
+					self.elimRowCol(a, [i,j])
 
 	def elimBlk(self, a, ind, replace=True):
 		#eliminate candidate from block
@@ -167,25 +153,36 @@ class Candidate(Board):
 				self.maybe[row + i][col + j].discard(a)
 
 		if replace: 
-			self.maybe[ind[0]][ind[1]] = {a}
-	
-	def elimAll(self, board):
-		#look at solution and eliminate candidate
+			self.maybe[ind[0]][ind[1]] = {a}		
+
+	def elimRowCol(self, a, ind, replace=True):
+		#eliminate candidate from row & col
 		for i in range(9):
-			for j in range(9):
-				a = board.grid[i][j]
-				if a != 0:
-					self.elimBlk(a, [i,j])
-					self.elimRowCol(a, [i,j])
-	
+			self.maybe[ind[0]][i].discard(a)
+			self.maybe[i][ind[1]].discard(a)
+		if replace:
+			self.maybe[ind[0]][ind[1]] = {a}
 
+	def maybeBlock(self, ind, option=False):
+		mayblock = []
+		for i in range(3):
+			for j in range(3):
+				if option:
+					mayblock += self.maybe[ind[0]+i][ind[1]+j]
+				else:
+					mayblock += list(self.maybe[ind[0]+i][ind[1]+j])
+		return mayblock
 
-
-
-
-
-
-
+#
+#	
+#
+#
+#
+#
+#
+#
+#
+#
 class SudokuSolver():
 	#this guy basically connects the candidate and solution
 	def __init__(self, board):
@@ -193,19 +190,12 @@ class SudokuSolver():
 		self.candidate = Candidate(board) #to use when solving
 		self.solution = self.candidate.deepcopy()
 
-	def oneLoop(self):
-		self.candidate.elimAll(self.solution)
-
-		self.logicBlkAll()
-		self.logicRowColAll()
-		self.updateGrid()
-
 	def solve(self):
 		counter = 0
 		while True:
 			#need a loop which stops when maybe grid doesn't change anymore
 			counter +=1
-			if counter > 10000: 
+			if counter > 1000: 
 				print(counter)
 
 			mock = copy.deepcopy(self.candidate.maybe)
@@ -217,30 +207,93 @@ class SudokuSolver():
 		self.candidate.print(2)
 		print('sudoku_complete()', self.solution.isLglSdk(1))
 
-	def logicBlk(self, ind):
-		#solve for unique candidate in block
-		row, col = ind[0], ind[1]
-		block_maybe = []
-		
-		#collect block.candidate
-		for i in range(3):
-			for j in range(3):
-				block_maybe += list(self.candidate.maybe[row+i][col+j])
+	def oneLoop(self):
+		self.candidate.elimAll(self.solution)
 
-		#change candidate set to which is unique in block
-		for digit in range(1,10):
-			if block_maybe.count(digit) == 1:
-				for i in range(3):
-					for j in range(3):
-						if self.candidate.maybe[row+i][col+j].intersection({digit}):
-							self.candidate.maybe[row+i][col+j] = {digit}
-							self.solution.grid[row+i][col+j] = digit					
-								
+		self.logicBlkAll()
+		self.logicRowColAll()
+		self.updateGrid()
+
 	def logicBlkAll(self):
 		for i in range(0,9,3):
 			for j in range(0,9,3):
 				self.logicBlk([i,j])
 				self.logicLinear([i,j])
+				self.logicPairs([i,j])
+
+	def logicBlk(self, ind):
+		#solve for unique candidate in block
+		row, col = ind[0], ind[1]
+		
+		#collect block.candidate
+		mayblock = self.candidate.maybeBlock([row,col])
+
+		#change candidate set to which is unique in block
+		for digit in range(1,10):
+			if mayblock.count(digit) == 1:
+				for i in range(3):
+					for j in range(3):
+						if self.candidate.maybe[row+i][col+j].intersection({digit}):
+							self.candidate.maybe[row+i][col+j] = {digit}
+							self.solution.grid[row+i][col+j] = digit					
+
+	def logicLinear(self, ind):
+		#delete candidate in other blocks if pair colinear
+		#feels like this should go to Candidate class
+		row, col = ind[0],ind[1]
+		#collect block.candidate
+		mayblock = self.candidate.maybeBlock([row,col])
+
+		for digit in range(1,10):
+			if mayblock.count(digit) == 2:
+				#find the two coords
+				match1, match2 = [],[]
+				for i in range(3):
+					for j in range(3):
+						if self.candidate.maybe[row+i][col+j].intersection({digit}):
+							if match1 == []: match1 = [row+i,col+j]
+							else:
+								match2 = [row+i,col+j]
+				if match1[0] == match2[0]:
+					#same row
+					for j in range(9):
+						if j != match1[1] and j != match2[1]:
+							self.candidate.maybe[match1[0]][j].discard(digit)
+				if match1[1] == match2[1]:
+					#same col
+					for i in range(9):
+						if i != match1[0] and i != match2[0]:
+							self.candidate.maybe[i][match1[1]].discard(digit)
+								
+	def logicPairs(self, ind):
+		#this, too.. should belong in the candidate class
+		#erase candidate from block that has space-exhaustive pairs
+		row , col = ind[0], ind[1]
+		layerblock = [self.candidate.maybe[row+i][col:col+3] for i in range(3)]
+		mayblock = [maybe for layer in layerblock for maybe in layer]
+
+		bshort = list(filter(lambda x: len(x)>1, mayblock))
+		#bshort might already have a matching pair, 
+		#(eg. pair of {4,8} must delete 4 and 8 from other candidates)
+		for i in bshort:
+			match = list(filter(lambda x: i == x, bshort))
+			if len(match) == len(i): 
+				#this conditional means that pairs of 3 candidate must have 3 matching pairs
+				nums = list(i)
+				for s in range(len(mayblock)):
+					for x in nums:	
+						if mayblock[s] != i: 
+							# print('deleting {} from {}'.format(x, mayblock[s]))
+							mayblock[s].discard(x)
+
+		for i in range(3):
+			for j in range(3):
+				self.candidate.maybe[row+i][col+j] = mayblock.pop(0)
+
+	def logicRowColAll(self):
+		for i in range(9):
+			for j in range(9):
+				self.logicRowCol([i,j])
 
 	def logicRowCol(self, ind): #-> turns out to be redundant;;
 		#solve for unique candidate in rowcol
@@ -260,54 +313,13 @@ class SudokuSolver():
 			self.candidate.maybe[row][col] = {digit}
 			self.solution.grid[row][col] = digit
 
-	def logicLinear(self, ind):
-		#delete candidate in other blocks if pair colinear
-		#feels like this should go to Candidate class
-		row, col = ind[0],ind[1]
-		block_maybe = []
-		#collect block.candidate
-		for i in range(3):
-			for j in range(3):
-				block_maybe += list(self.candidate.maybe[row+i][col+j])
-
-		for digit in range(1,10):
-			if block_maybe.count(digit) == 2:
-				#find the two coords
-				match1, match2 = [],[]
-				for i in range(3):
-					for j in range(3):
-						if self.candidate.maybe[row+i][col+j].intersection({digit}):
-							if match1 == []: match1 = [row+i,col+j]
-							else:
-								match2 = [row+i,col+j]
-				if match1[0] == match2[0]:
-					#same row
-					for j in range(9):
-						if j != match1[1] and j != match2[1]:
-							self.candidate.maybe[match1[0]][j].discard(digit)
-				if match1[1] == match2[1]:
-					#same col
-					for i in range(9):
-						if i != match1[0] and i != match2[0]:
-							self.candidate.maybe[i][match1[1]].discard(digit)
-
 	
-	def logicRowColAll(self):
-		for i in range(9):
-			for j in range(9):
-				self.logicRowCol([i,j])
-
-
 	def updateGrid(self):
+		#convert singled out candidate to solution grid
 		for i in range(9):
 			for j in range(9):
 				if len(self.candidate.maybe[i][j]) ==1:
 					digit = sum(list(self.candidate.maybe[i][j]))	
 					self.solution.grid[i][j] = digit
-
-
-		
-
-
 
 

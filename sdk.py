@@ -1,15 +1,18 @@
-from board import *
-from grids import *
-import csv
-import sys
-
 #ToDo Next:
-	#identify pairs of candidate and make its quality valuable
-		#sdk.logicPair()
+	#do the pairs thing for rows and cols
+
+	#should make this run tests..
+
 	#memoize the solved ones
 
 	#clean up code
 		#do i need a sdk.solution class in the first place?
+
+
+from board import *
+from grids import *
+import csv
+import sys
 
 # read from generated sudoku
 def read():
@@ -20,8 +23,19 @@ def read():
 
 def main(level='medium', date='all', _print=False ): #oneLoop=False -> to implement
 	global sdk
-	if level == "": level = 'medium'
-	if date  == "":  date = 'all'
+	if level == 'e': 
+		level = 'easy'
+	elif level == 'h':
+		level = 'hard'
+	else:
+		level = 'medium'
+
+	if date  == 'latest':  
+		date = list(problemset[level]).pop()
+	elif date.isnumeric():
+		pass
+	else: date = 'all'
+
 	if date != 'all':
 		print(level, date)
 		sdk = SudokuSolver(TrainingBoard(problemset[level][date]))
@@ -45,4 +59,7 @@ def main(level='medium', date='all', _print=False ): #oneLoop=False -> to implem
 		else: print()
 
 if __name__=="__main__":
-	main(input("level(easy, medium, hard): "),  input("date('mmdd' or 'all'): "), input("print? (n = Enter): "))
+	if len(sys.argv) > 1:
+		main(sys.argv[1], sys.argv[2], None if len(sys.argv) == 3 else sys.argv[3])
+	else: 
+		main(input("level(easy, medium, hard): "),  input("date(mmdd, all, latest): "), input("print? (n = Enter): "))
