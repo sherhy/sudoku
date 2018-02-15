@@ -1,9 +1,12 @@
 #ToDo Next:
 	#do the pairs thing for rows and cols
+		# self.logicRCPairs([i,j])
+
 
 	#should make this run tests..
 
-	#memoize the solved ones
+	#memoize the solved ones ->
+		#create interface that can dynamically store into data csv file
 
 	#clean up code
 		#do i need a sdk.solution class in the first place?
@@ -23,9 +26,9 @@ def read():
 
 def main(level='medium', date='all', _print=False ): #oneLoop=False -> to implement
 	global sdk
-	if level == 'e': 
+	if level == 'e' or level == 'easy': 
 		level = 'easy'
-	elif level == 'h':
+	elif level == 'h' or level == 'hard':
 		level = 'hard'
 	else:
 		level = 'medium'
