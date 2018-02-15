@@ -3,10 +3,12 @@
 import copy, math, random
 
 class Board():
-	def __init__(self):
+	def __init__(self, _input=False):
 		self.grid = [ [0]*9 for row in range(9) ]
 		self.answer = []
 		self.maybe = []
+		if _input:
+			self.inputGrid()
 
 	def print(self, opt = 0):
 		option = [self.grid, self.answer, self.maybe]
@@ -33,9 +35,9 @@ class Board():
 	
 	def inputGrid(self):
 		#for making board via array inputs per row
-		for r in range(len(self.grid)):
-			print('row')
-			query = [int(x) for x in input().split(',')]
+		for r in range(9):
+			print('row', r+1,end=': ')
+			query = [int(x) for x in input()]
 			row = [0 if (i ==0 or i == float('nan')) else i for i in query]
 			self.grid[r] = row
 
@@ -204,7 +206,7 @@ class SudokuSolver():
 
 	def print(self):
 		self.solution.print()
-		self.candidate.print(2)
+		# self.candidate.print(2)
 		print('sudoku_complete()', self.solution.isLglSdk(1))
 
 	def oneLoop(self):

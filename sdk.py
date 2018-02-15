@@ -1,16 +1,11 @@
 #ToDo Next:
-	#do the pairs thing for rows and cols
-		# self.logicRCPairs([i,j])
-
-
-	#should make this run tests..
-
 	#memoize the solved ones ->
 		#create interface that can dynamically store into data csv file
 
+	#should make this run tests..
+
 	#clean up code
 		#do i need a sdk.solution class in the first place?
-
 
 from board import *
 from grids import *
@@ -20,9 +15,11 @@ import sys
 # read from generated sudoku
 def read():
 	global sTraining
+	sTraining = list()
 	with open('data/test.csv') as f:
 		reader = csv.reader(f)
 		sTraining = [row for row in reader]
+
 
 def main(level='medium', date='all', _print=False ): #oneLoop=False -> to implement
 	global sdk
@@ -65,4 +62,15 @@ if __name__=="__main__":
 	if len(sys.argv) > 1:
 		main(sys.argv[1], sys.argv[2], None if len(sys.argv) == 3 else sys.argv[3])
 	else: 
-		main(input("level(easy, medium, hard): "),  input("date(mmdd, all, latest): "), input("print? (n = Enter): "))
+		mode = input("mode ('macro' or 'single'): ")
+		if mode == 'macro' or mode=='m':
+			main(input("level(easy, medium, hard): "),  input("date(mmdd, all, latest): "), input("print? (n = Enter): "))
+		
+		grid = Board(_input=True)
+		sdk = SudokuSolver(grid)
+
+		sdk.solve()
+		sdk.print()
+		#sdk.save()
+
+		quit("see you next time")
