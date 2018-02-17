@@ -118,9 +118,10 @@ class TrainingBoard(Board):
 			self.createBoard()
 	
 	def arr2grid(self, arr):
+		#arr = ['mmdd', 'numeric']
 		for i in range(9):
-			self.grid[i] = [int(x) for x in arr[0][i*9:i*9+9]]
-			self.answer[i] = [int(x) for x in arr[1][i*9:i*9+9]] if len(arr)==2 else []
+			self.grid[i] = [int(x) for x in arr[1][i*9:i*9+9]]
+			# self.answer[i] = [int(x) for x in arr[1][i*9:i*9+9]] if len(arr)==2 else []
 
 	def createBoard(self):
 		#make question board (as hard as solving one)
@@ -192,7 +193,12 @@ class SudokuSolver():
 		self.candidate = Candidate(board) #to use when solving
 		self.solution = self.candidate.deepcopy()
 
+	def checkMemo(self):
+		pass
+
 	def solve(self):
+		if self.checkMemo(): 
+			pass
 		counter = 0
 		while True:
 			#need a loop which stops when maybe grid doesn't change anymore
