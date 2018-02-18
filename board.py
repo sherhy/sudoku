@@ -3,10 +3,13 @@
 import copy, math, random
 
 class Board():
-	def __init__(self, _input=False):
+	def __init__(self, arr = None, _input=False):
 		self.grid = [ [0]*9 for row in range(9) ]
 		self.answer = []
 		self.maybe = []
+		if arr != None:
+			self.arr2grid(arr)
+
 		if _input:
 			self.inputGrid()
 
@@ -103,25 +106,11 @@ class Board():
 			for j in range(3):
 				if not self.isLglBlk( [i,j]): return False
 		return True
-#
-#
-#
-#
-#
-class TrainingBoard(Board):
-	def __init__(self, arr = None):
-		super(TrainingBoard, self).__init__()
-		self.answer=[ [0]*9 for row in range(9) ]
-		if arr != None:
-			self.arr2grid(arr)
-		else:
-			self.createBoard()
-	
-	def arr2grid(self, arr):
-		#arr = ['mmdd', 'numeric']
+
+	def arr2grid(self, board):
+		#board = ['mmdd', 'numeric']
 		for i in range(9):
-			self.grid[i] = [int(x) for x in arr[1][i*9:i*9+9]]
-			# self.answer[i] = [int(x) for x in arr[1][i*9:i*9+9]] if len(arr)==2 else []
+			self.grid[i] = [int(x) for x in board[1][i*9:i*9+9]]
 
 	def createBoard(self):
 		#make question board (as hard as solving one)
@@ -170,12 +159,8 @@ class Candidate(Board):
 		mayblock = []
 		for i in range(3):
 			for j in range(3):
-				if option:
-					mayblock += self.maybe[ind[0]+i][ind[1]+j]
-				else:
-					mayblock += list(self.maybe[ind[0]+i][ind[1]+j])
+				mayblock += list(self.maybe[ind[0]+i][ind[1]+j])
 		return mayblock
-
 #
 #	
 #
@@ -210,16 +195,21 @@ class SudokuSolver():
 			self.oneLoop()
 			if mock == self.candidate.maybe: break
 
-	def print(self):
+	def print(self, _opt = False):
+		#_opt 0: no print
+		#_opt 1: print solution
+		#_opt 2: print candidate
+		if bool(_opt) != True: return None
 		self.solution.print()
-		# self.candidate.print(2)
+		if _opt == '2':
+			self.candidate.print(2)
 		print('sudoku_complete()', self.solution.isLglSdk(1))
 
 	def oneLoop(self):
 		self.candidate.elimAll(self.solution)
 
 		self.logicBlkAll()
-		self.logicRowColAll()
+		self.logicRCAll()
 		self.updateGrid()
 
 	def logicBlkAll(self):
@@ -228,6 +218,13 @@ class SudokuSolver():
 				self.logicBlk([i,j])
 				self.logicLinear([i,j])
 				self.logicPairsBlk([i,j])
+				self.logicRCBlock([i,j])
+
+	def logicRCAll(self):
+		for i in range(9):
+			for j in range(9):				
+				self.logicPairsRC([i,j])
+			self.logicRowCol([i,j])
 
 	def logicBlk(self, ind):
 		#solve for unique candidate in block
@@ -249,6 +246,7 @@ class SudokuSolver():
 		#delete candidate in other blocks if pair colinear
 		#feels like this should go to Candidate class
 		row, col = ind[0],ind[1]
+
 		#collect block.candidate
 		mayblock = self.candidate.maybeBlock([row,col])
 
@@ -280,16 +278,17 @@ class SudokuSolver():
 
 		#array of list(row) 
 		layerblock = [self.candidate.maybe[row+i][col:col+3] for i in range(3)]
+		
 		#array of set 
 		mayblock = [item for layer in layerblock for item in layer]
 
 		#array of set longer than two
-		bshort = list(filter(lambda x: len(x)>1, mayblock))
+		short = list(filter(lambda x: len(x)>1, mayblock))
 		
-		#bshort might already have a matching pair, 
+		#short might already have a matching pair, 
 		#(eg. pair of {4,8} must delete 4 and 8 from other candidates)
-		for i in bshort:
-			match = list(filter(lambda x: i == x, bshort))
+		for i in short:
+			match = list(filter(lambda x: i == x, short))
 			if len(match) == len(i): 
 				#this conditional means that ie pairs of 3 candidate must have 3 matching pairs
 				nums = list(i)
@@ -299,31 +298,54 @@ class SudokuSolver():
 							# print('deleting {} from {}'.format(x, mayblock[s]))
 							mayblock[s].discard(x)
 
-		#recalibrate the maybe grid
+		#recalibrate the candidate grid
 		for i in range(3):
 			for j in range(3):
 				self.candidate.maybe[row+i][col+j] = mayblock.pop(0)
 
-	def logicRowColAll(self):
-		for i in range(9):
-			for j in range(9):
-				self.logicRowCol([i,j])
-				self.logicPairsRC([i,j])
+	def logicRCBlock(self, ind):
+		#reduces candidates to a certain row/col of the block 
+		#by looking at candidates in the row/col outside the block
+		row , col = ind[0], ind[1]
 
+		maycols = [[self.candidate.maybe[x][col+i] for x in range(9)] for i in range(3)]
+		
+		for x in range(3):
+			#x refers to col
+			#save indices containing digit
+			for digit in range(1,10):
+				indrows = set(y for y in range(9) if digit in maycols[x][y])
+				if len(indrows)<2 or len(set(i for i in range(row,row+3)).union(indrows)) > 3: 
+					continue
+
+				for p in range(3):
+					for q in range(3):
+						if q == x: continue
+						if digit in self.candidate.maybe[row+p][col+q]:
+							# pass
+							self.candidate.maybe[row+p][col+q].discard(digit)
+							# print('d {} from {}'.format(digit, [row+p, col+q]))
+
+
+
+
+
+
+	
+			
 	def logicRowCol(self, ind): #-> turns out to be redundant;;
 		#solve for unique candidate in rowcol
 		row, col = ind[0], ind[1]
 		
 		#collect for array
-		col_maybe = [self.candidate.maybe[x][col] for x in range(9) if x!= row] 
-		row_maybe = [self.candidate.maybe[row][x] for x in range(9) if x!= col]
+		maycol = [self.candidate.maybe[x][col] for x in range(9) if x!= row] #not including itself
+		mayrow = [self.candidate.maybe[row][x] for x in range(9) if x!= col]
 
 		for digit in range(1,10):
 			#check if he's the only guy in the row or col
-			rowCheck = list(filter(lambda i: i.intersection({digit}), row_maybe))
-			colCheck = list(filter(lambda i: i.intersection({digit}), col_maybe))
+			rowCheck = list(filter(lambda i: i.intersection({digit}), mayrow))
+			colCheck = list(filter(lambda i: i.intersection({digit}), maycol))
 		
-		# print([i,j], digit, rowCheck, colCheck)
 		if rowCheck == [] or colCheck==[]: 
 			self.candidate.maybe[row][col] = {digit}
 			self.solution.grid[row][col] = digit
@@ -333,19 +355,15 @@ class SudokuSolver():
 		row , col = ind[0], ind[1]
 
 		#array of sets
-		maycol = [self.candidate.maybe[x][col] for x in range(9)]# if x!= row] 
-		mayrow = [self.candidate.maybe[row][x] for x in range(9)]# if x!= col]
-
-		# #array of int
-		# mayrow = [item for layer in row_maybe for item in layer]
-		# maycol = [item for layer in col_maybe for item in layer]
+		maycol = [self.candidate.maybe[x][col] for x in range(9)] 
+		mayrow = [self.candidate.maybe[row][x] for x in range(9)]
 
 		#array of sets with mutliple candidate
-		bshortrow = list(filter(lambda x: len(x)>1, mayrow))
-		bshortcol = list(filter(lambda x: len(x)>1, maycol))
+		shortrow = list(filter(lambda x: len(x)>1, mayrow))
+		shortcol = list(filter(lambda x: len(x)>1, maycol))
 
-		for i in bshortrow:
-			match = list(filter(lambda x: i == x, bshortrow))
+		for i in shortrow:
+			match = list(filter(lambda x: i == x, shortrow))
 			if len(match) == len(i): 
 				#this conditional means that eg pairs of 3 candidate must have 3 matching pairs
 				nums = list(i)
@@ -356,8 +374,8 @@ class SudokuSolver():
 		for i in range(9):
 			self.candidate.maybe[row][i] = mayrow.pop(0)
 
-		for i in bshortcol:
-			match = list(filter(lambda x: i == x, bshortcol))
+		for i in shortcol:
+			match = list(filter(lambda x: i == x, shortcol))
 			if len(match) == len(i): 
 				#this conditional means that pairs of 3 candidate must have 3 matching pairs
 				nums = list(i)
@@ -369,8 +387,6 @@ class SudokuSolver():
 		for i in range(9):
 			self.candidate.maybe[i][col] = maycol.pop(0)
 
-
-	
 	def updateGrid(self):
 		#convert singled out candidate to solution grid
 		for i in range(9):

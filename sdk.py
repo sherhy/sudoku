@@ -2,14 +2,13 @@
 	#memoize the solved ones ->
 		#or a save function for the answers
 
+	#need better names for the methods
+
 	#clean up code
-		#do i need a sdk.solution class in the first place?
 
 from board import *
-# from grids import *
 import csv, sys
 
-# read from generated sudoku
 def read(_level):
 	with open('data/'+_level+'.csv') as f:
 		reader = csv.reader(f)
@@ -30,46 +29,41 @@ def main(level='medium', date='all', _print=False ): #oneLoop=False -> to implem
 	else:
 		level = 'medium'
 
-	if date  == 'latest':  
-		date = read(level)[-1][0]
-	elif date.isnumeric():
-		pass
-	else: date = 'all'
-
-	if date != 'all':
-		board = list(filter(lambda x: x[0] == date, read(level)))[0]
-		print(level, board[0])
-		
-		sdk = SudokuSolver(TrainingBoard(board))
-		sdk.solve()
-
-		if _print: sdk.print()
-		print('no error:', sdk.solution.isLglSdk())
-	else:
-		success, error = 0,0
+	if date  == 'all':
 		boards = read(level)[1:]
-		for board in boards:
-			print(level, board[0])
-			sdk = SudokuSolver(TrainingBoard(board))
-			sdk.solve()
-			if _print: sdk.print()
+	else:
+		if date == 'latest': 
+			date = read(level)[-1][0]
+		boards = list(filter(lambda x: x[0] == date, read(level)))
+		
+	if _print == '0': _print = False
 
-			if not sdk.solution.isLglSdk(): error +=1
-			if sdk.solution.isLglSdk(1): success +=1
-		total = len(boards)
-		print('final grade: {0}/{1}'.format(success, total), success/total*100, '%\nerrors:', error, end =" ")
-		if not error: print("no errors, great!")
-		else: print()
+	success, error = 0,0
+	
+	for board in boards:
+		print(level, board[0])
+		sdk = SudokuSolver(Board(board))
+		sdk.solve()
+		sdk.print(_print)
+
+		if not sdk.solution.isLglSdk(): error +=1
+		if sdk.solution.isLglSdk(1): success +=1
+	total = len(boards)
+	print('final grade: {0}/{1}'.format(success, total), success/total*100, '%\nerrors:', error, end =" -> ")
+	if not error: 
+		print("no errors, great!")
+	else: print("fix yo errors")
 
 if __name__=="__main__":
 	if len(sys.argv) > 1:
-		#py sdk.py easy all print
+		#py sdk.py easy all 
+		#py sdk.py m latest 2
 		main(sys.argv[1], sys.argv[2], None if len(sys.argv) == 3 else sys.argv[3])
 	else: 
 		#py sdk.py
 		mode = input("mode ('macro' or 'single'): ")
 		if mode == 'macro' or mode=='m':
-			main(input("level(easy, medium, hard): "),  input("date(mmdd, all, latest): "), input("print? (n = Enter): "))
+			main(input("level(easy, medium, hard): "),  input("date(mmdd, all, latest): "), input("print? ('0','1','2'): "))
 			quit()
 			
 		#input mode
@@ -79,7 +73,6 @@ if __name__=="__main__":
 		sdk = SudokuSolver(grid)
 		save(level, date, sdk)
 
-		sdk.solve()
-		sdk.print()
+		main(level, date, input("print? "))
 
 		quit("see you next time")
