@@ -2,9 +2,11 @@
 	#memoize the solved ones ->
 		#or a save function for the answers
 
-	#need better names for the methods
+	#back at finding hidden pairs
 
 	#clean up code
+
+	#0206 hard ind[2,8] should be 5 (unique in column) -> fix
 
 from board import *
 import csv, sys
@@ -36,7 +38,7 @@ def main(level='medium', date='all', _print=False ): #oneLoop=False -> to implem
 			date = read(level)[-1][0]
 		boards = list(filter(lambda x: x[0] == date, read(level)))
 		
-	if _print == '0': _print = False
+	if _print == '0' or _print =="n" or _print=="no": _print = False
 
 	success, error = 0,0
 	

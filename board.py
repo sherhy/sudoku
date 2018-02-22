@@ -156,15 +156,216 @@ class Candidate(Board):
 			self.maybe[ind[0]][ind[1]] = {a}
 
 	def maybeBlock(self, ind, option=False):
+		#returns a list of ints
 		mayblock = []
 		for i in range(3):
 			for j in range(3):
 				mayblock += list(self.maybe[ind[0]+i][ind[1]+j])
 		return mayblock
-#
+
+	def RC(self, ind): 
+		#solve for unique candidate in row and col
+		row, col = ind[0], ind[1]
+		
+		#collect for row and col
+		maycol = [self.maybe[x][col] for x in range(9)] 
+		mayrow = [self.maybe[row][y] for y in range(9)]
+
+		for digit in range(1,10):
+			#i want to have returned indices for where digits exist
+			colind = [y for y in range(9) if len(mayrow[y].intersection({digit})) == 1 ]
+			rowind = [x for x in range(9) if len(maycol[x].intersection({digit})) == 1 ]
+
+			if len(colind) == 1: 
+				self.maybe[row][colind[0]] = {digit}
+
+			if len(rowind) == 1: 
+				self.maybe[rowind[0]][col] = {digit}
+
+	def Block(self, ind):
+		#solve for unique candidate in block
+		row, col = ind[0], ind[1]
+		
+		#collect block.candidate
+		mayblock = self.maybeBlock([row,col])
+
+		#change candidate set to which is unique in block
+		for digit in range(1,10):
+			if mayblock.count(digit) == 1:
+				for i in range(3):
+					for j in range(3):
+						if self.maybe[row+i][col+j].intersection({digit}):
+							self.maybe[row+i][col+j] = {digit}
+
+	def Linear(self, ind):
+		#delete candidate in other blocks if pair colinear
+		#feels like this should go to Candidate class
+		row, col = ind[0],ind[1]
+
+		#collect block.candidate
+		mayblock = self.maybeBlock([row,col])
+
+		for digit in range(1,10):
+			if mayblock.count(digit) == 2:
+				#find the two coords
+				match1, match2 = [],[]
+				for i in range(3):
+					for j in range(3):
+						if self.maybe[row+i][col+j].intersection({digit}):
+							if match1 == []: match1 = [row+i,col+j]
+							else:
+								match2 = [row+i,col+j]
+				if match1[0] == match2[0]:
+					#same row
+					for j in range(9):
+						if j != match1[1] and j != match2[1]:
+							self.maybe[match1[0]][j].discard(digit)
+				if match1[1] == match2[1]:
+					#same col
+					for i in range(9):
+						if i != match1[0] and i != match2[0]:
+							self.maybe[i][match1[1]].discard(digit)
+
+							
+	def PairsBlk(self, ind):
+		#erase candidate from block that has space-exhaustive pairs
+		row , col = ind[0], ind[1]
+
+		#array of list(row) 
+		layerblock = [self.maybe[row+i][col:col+3] for i in range(3)]
+		
+		#array of set 
+		mayblock = [item for layer in layerblock for item in layer]
+
+		#find hidden pairs
+		#make data for indices 
+		digit_dict = dict()
+		for digit in range(1,10):
+			inds = [i for i in range(9) if digit in mayblock[i]]
+			count = len(inds)
+			digit_dict[digit] = inds
+
+		#find match
+		for i in range(1,10):
+			#numbers NOT indices of block
+			match =[j for j in range(i,10) if digit_dict[i]==digit_dict[j]] 
+			if len(match) == len(digit_dict[i]):
+				#readjust for block
+				for x in range(9):
+					if mayblock[x].intersection(set(match)) == set(match):
+						mayblock[x] = set(match)
+
+		# #WRONG (but keeping it)
+		# for i in mayblock:
+		# 	diff = [i.difference(j) for j in mayblock if len(i.difference(j))>1]
+		# 	# print('diff',diff)
+		# 	if len(diff) < 1: continue
+		# 	comm = diff[0]
+		# 	for j in diff:
+		# 		comm = comm.intersection(j)
+		# 	if len(comm)>1 and len(list(filter(lambda x: x.intersection(comm), mayblock)))==len(comm):
+		# 		mayblock = [comm if comm.intersection(b) == comm else b for b in mayblock]
+
+		#array of set longer than two
+		short = list(filter(lambda x: len(x)>1, mayblock))
+		
+		#short might already have a matching pair, 
+		#(eg. pair of {4,8} must delete 4 and 8 from other candidates)
+		for i in short:
+			match = list(filter(lambda x: i == x, short))
+			if len(match) == len(i): 
+				#this conditional means that ie pairs of 3 candidate must have 3 matching pairs
+				nums = list(i)
+				for s in range(len(mayblock)):
+					for x in nums:	
+						if mayblock[s] != i: 
+							# print('deleting {} from {}'.format(x, mayblock[s]))
+							mayblock[s].discard(x)
+
+		#recalibrate the candidate grid
+		for i in range(3):
+			for j in range(3):
+				self.maybe[row+i][col+j] = mayblock.pop(0)
+
+	def PairsRC(self, ind):
+		#erase candidate from row col that have space-exhaustive pairs
+		row , col = ind[0], ind[1]
+
+		#array of sets
+		maycol = [self.maybe[x][col] for x in range(9)] 
+		mayrow = [self.maybe[row][x] for x in range(9)]
+
+		# #find hidden pairs
+		# for i in maycol:
+		# 	diff = [i.difference(j) for j in maycol if len(i.difference(j))>1]
+		# 	# print('diff',diff)
+		# 	if len(diff) < 1: continue
+		# 	comm = diff[0]
+		# 	for j in diff:
+		# 		comm = comm.intersection(j)
+		# 	if len(comm)>1 and len(list(filter(lambda x: x.intersection(comm), maycol)))==len(comm):
+		# 		maycol = [comm if comm.intersection(b) == comm else b for b in maycol]
+		# for i in mayrow:
+		# 	diff = [i.difference(j) for j in mayrow if len(i.difference(j))>1]
+		# 	# print('diff',diff)
+		# 	if len(diff) < 1: continue
+		# 	comm = diff[0]
+		# 	for j in diff:
+		# 		comm = comm.intersection(j)
+		# 	if len(comm)>1 and len(list(filter(lambda x: x.intersection(comm), mayrow)))==len(comm):
+		# 		mayrow = [comm if comm.intersection(b) == comm else b for b in mayrow]
+
+		#array of sets with mutliple candidate
+		shortrow = list(filter(lambda x: len(x)>1, mayrow))
+		shortcol = list(filter(lambda x: len(x)>1, maycol))
+
+		for i in shortrow:
+			match = list(filter(lambda x: i == x, shortrow))
+			if len(match) == len(i): 
+				#this conditional means that eg pairs of 3 candidate must have 3 matching pairs
+				nums = list(i)
+				for s in range(len(mayrow)):
+					for x in nums:	
+						if mayrow[s] != i: 
+							mayrow[s].discard(x)
+		for i in range(9):
+			self.maybe[row][i] = mayrow.pop(0)
+
+		for i in shortcol:
+			match = list(filter(lambda x: i == x, shortcol))
+			if len(match) == len(i): 
+				#this conditional means that pairs of 3 candidate must have 3 matching pairs
+				nums = list(i)
+				for s in range(len(maycol)):
+					for x in nums:	
+						if maycol[s] != i: 
+							maycol[s].discard(x)
+
+		for i in range(9):
+			self.maybe[i][col] = maycol.pop(0)
+
+	def RCBlock(self, ind):
+		#reduces candidates to a certain row/col of the block 
+		#by looking at candidates in the row/col outside the block
+		row , col = ind[0], ind[1]
+
+		maycols = [[self.maybe[x][col+i] for x in range(9)] for i in range(3)]
+		
+		for x in range(3):
+			#x refers to col
+			#save indices containing digit
+			for digit in range(1,10):
+				indrows = set(y for y in range(9) if digit in maycols[x][y])
+				if len(indrows)<2 or len(set(i for i in range(row,row+3)).union(indrows)) > 3: 
+					continue
+
+				for p in range(3):
+					for q in range(3):
+						if q == x: continue
+						if digit in self.maybe[row+p][col+q]:
+							self.maybe[row+p][col+q].discard(digit)
+							# print('d {} from {}'.format(digit, [row+p, col+q]))
 #	
-#
-#
 #
 #
 #
@@ -196,9 +397,7 @@ class SudokuSolver():
 			if mock == self.candidate.maybe: break
 
 	def print(self, _opt = False):
-		#_opt 0: no print
-		#_opt 1: print solution
-		#_opt 2: print candidate
+		#_opt 0: no print / 1: print solution / 2: print candidate
 		if bool(_opt) != True: return None
 		self.solution.print()
 		if _opt == '2':
@@ -207,7 +406,6 @@ class SudokuSolver():
 
 	def oneLoop(self):
 		self.candidate.elimAll(self.solution)
-
 		self.logicBlkAll()
 		self.logicRCAll()
 		self.updateGrid()
@@ -215,178 +413,17 @@ class SudokuSolver():
 	def logicBlkAll(self):
 		for i in range(0,9,3):
 			for j in range(0,9,3):
-				self.logicBlk([i,j])
-				self.logicLinear([i,j])
-				self.logicPairsBlk([i,j])
-				self.logicRCBlock([i,j])
+				self.candidate.Block([i,j])
+				self.candidate.Linear([i,j])
+				self.candidate.PairsBlk([i,j])
+				self.candidate.RCBlock([i,j])
 
 	def logicRCAll(self):
 		for i in range(9):
-			for j in range(9):				
-				self.logicPairsRC([i,j])
-			self.logicRowCol([i,j])
-
-	def logicBlk(self, ind):
-		#solve for unique candidate in block
-		row, col = ind[0], ind[1]
-		
-		#collect block.candidate
-		mayblock = self.candidate.maybeBlock([row,col])
-
-		#change candidate set to which is unique in block
-		for digit in range(1,10):
-			if mayblock.count(digit) == 1:
-				for i in range(3):
-					for j in range(3):
-						if self.candidate.maybe[row+i][col+j].intersection({digit}):
-							self.candidate.maybe[row+i][col+j] = {digit}
-							self.solution.grid[row+i][col+j] = digit					
-
-	def logicLinear(self, ind):
-		#delete candidate in other blocks if pair colinear
-		#feels like this should go to Candidate class
-		row, col = ind[0],ind[1]
-
-		#collect block.candidate
-		mayblock = self.candidate.maybeBlock([row,col])
-
-		for digit in range(1,10):
-			if mayblock.count(digit) == 2:
-				#find the two coords
-				match1, match2 = [],[]
-				for i in range(3):
-					for j in range(3):
-						if self.candidate.maybe[row+i][col+j].intersection({digit}):
-							if match1 == []: match1 = [row+i,col+j]
-							else:
-								match2 = [row+i,col+j]
-				if match1[0] == match2[0]:
-					#same row
-					for j in range(9):
-						if j != match1[1] and j != match2[1]:
-							self.candidate.maybe[match1[0]][j].discard(digit)
-				if match1[1] == match2[1]:
-					#same col
-					for i in range(9):
-						if i != match1[0] and i != match2[0]:
-							self.candidate.maybe[i][match1[1]].discard(digit)
-								
-	def logicPairsBlk(self, ind):
-		#this, too.. should belong in the candidate class
-		#erase candidate from block that has space-exhaustive pairs
-		row , col = ind[0], ind[1]
-
-		#array of list(row) 
-		layerblock = [self.candidate.maybe[row+i][col:col+3] for i in range(3)]
-		
-		#array of set 
-		mayblock = [item for layer in layerblock for item in layer]
-
-		#array of set longer than two
-		short = list(filter(lambda x: len(x)>1, mayblock))
-		
-		#short might already have a matching pair, 
-		#(eg. pair of {4,8} must delete 4 and 8 from other candidates)
-		for i in short:
-			match = list(filter(lambda x: i == x, short))
-			if len(match) == len(i): 
-				#this conditional means that ie pairs of 3 candidate must have 3 matching pairs
-				nums = list(i)
-				for s in range(len(mayblock)):
-					for x in nums:	
-						if mayblock[s] != i: 
-							# print('deleting {} from {}'.format(x, mayblock[s]))
-							mayblock[s].discard(x)
-
-		#recalibrate the candidate grid
-		for i in range(3):
-			for j in range(3):
-				self.candidate.maybe[row+i][col+j] = mayblock.pop(0)
-
-	def logicRCBlock(self, ind):
-		#reduces candidates to a certain row/col of the block 
-		#by looking at candidates in the row/col outside the block
-		row , col = ind[0], ind[1]
-
-		maycols = [[self.candidate.maybe[x][col+i] for x in range(9)] for i in range(3)]
-		
-		for x in range(3):
-			#x refers to col
-			#save indices containing digit
-			for digit in range(1,10):
-				indrows = set(y for y in range(9) if digit in maycols[x][y])
-				if len(indrows)<2 or len(set(i for i in range(row,row+3)).union(indrows)) > 3: 
-					continue
-
-				for p in range(3):
-					for q in range(3):
-						if q == x: continue
-						if digit in self.candidate.maybe[row+p][col+q]:
-							# pass
-							self.candidate.maybe[row+p][col+q].discard(digit)
-							# print('d {} from {}'.format(digit, [row+p, col+q]))
-
-
-
-
-
-
-	
-			
-	def logicRowCol(self, ind): #-> turns out to be redundant;;
-		#solve for unique candidate in rowcol
-		row, col = ind[0], ind[1]
-		
-		#collect for array
-		maycol = [self.candidate.maybe[x][col] for x in range(9) if x!= row] #not including itself
-		mayrow = [self.candidate.maybe[row][x] for x in range(9) if x!= col]
-
-		for digit in range(1,10):
-			#check if he's the only guy in the row or col
-			rowCheck = list(filter(lambda i: i.intersection({digit}), mayrow))
-			colCheck = list(filter(lambda i: i.intersection({digit}), maycol))
-		
-		if rowCheck == [] or colCheck==[]: 
-			self.candidate.maybe[row][col] = {digit}
-			self.solution.grid[row][col] = digit
-
-	def logicPairsRC(self, ind):
-		#applying same logic for logicPairsBlk
-		row , col = ind[0], ind[1]
-
-		#array of sets
-		maycol = [self.candidate.maybe[x][col] for x in range(9)] 
-		mayrow = [self.candidate.maybe[row][x] for x in range(9)]
-
-		#array of sets with mutliple candidate
-		shortrow = list(filter(lambda x: len(x)>1, mayrow))
-		shortcol = list(filter(lambda x: len(x)>1, maycol))
-
-		for i in shortrow:
-			match = list(filter(lambda x: i == x, shortrow))
-			if len(match) == len(i): 
-				#this conditional means that eg pairs of 3 candidate must have 3 matching pairs
-				nums = list(i)
-				for s in range(len(mayrow)):
-					for x in nums:	
-						if mayrow[s] != i: 
-							mayrow[s].discard(x)
-		for i in range(9):
-			self.candidate.maybe[row][i] = mayrow.pop(0)
-
-		for i in shortcol:
-			match = list(filter(lambda x: i == x, shortcol))
-			if len(match) == len(i): 
-				#this conditional means that pairs of 3 candidate must have 3 matching pairs
-				nums = list(i)
-				for s in range(len(maycol)):
-					for x in nums:	
-						if maycol[s] != i: 
-							maycol[s].discard(x)
-
-		for i in range(9):
-			self.candidate.maybe[i][col] = maycol.pop(0)
-
+			for j in range(9):			
+				self.candidate.PairsRC([i,j])
+			self.candidate.RC([i,j])				
+				
 	def updateGrid(self):
 		#convert singled out candidate to solution grid
 		for i in range(9):
@@ -394,5 +431,3 @@ class SudokuSolver():
 				if len(self.candidate.maybe[i][j]) ==1:
 					digit = sum(list(self.candidate.maybe[i][j]))	
 					self.solution.grid[i][j] = digit
-
-
