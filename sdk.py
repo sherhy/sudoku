@@ -2,11 +2,7 @@
 	#memoize the solved ones ->
 		#or a save function for the answers
 
-	#back at finding hidden pairs
-
 	#clean up code
-
-	#0206 hard ind[2,8] should be 5 (unique in column) -> fix
 
 from board import *
 import csv, sys
@@ -15,6 +11,8 @@ def read(_level):
 	with open('data/'+_level+'.csv') as f:
 		reader = csv.reader(f)
 		boards = [row for row in reader]
+		if _level == "test":
+			boards = [[str(b)] + boards[b] for b in range(len(boards))]
 	return boards
 
 def save(_level, _date, sdk):
@@ -28,6 +26,7 @@ def main(level='medium', date='all', _print=False ): #oneLoop=False -> to implem
 		level = 'easy'
 	elif level == 'h' or level == 'hard':
 		level = 'hard'
+	elif level =='h' or level == 'test': pass	
 	else:
 		level = 'medium'
 
@@ -58,7 +57,7 @@ def main(level='medium', date='all', _print=False ): #oneLoop=False -> to implem
 
 if __name__=="__main__":
 	if len(sys.argv) > 1:
-		#py sdk.py easy all 
+		#py sdk.py test 7 
 		#py sdk.py m latest 2
 		main(sys.argv[1], sys.argv[2], None if len(sys.argv) == 3 else sys.argv[3])
 	else: 

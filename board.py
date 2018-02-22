@@ -115,11 +115,9 @@ class Board():
 	def createBoard(self):
 		#make question board (as hard as solving one)
 		pass
-#
-#
-#
-#
-#
+
+
+
 class Candidate(Board):
 	def __init__(self, board=None):
 		super(Candidate, self).__init__()
@@ -296,6 +294,39 @@ class Candidate(Board):
 		mayrow = [self.maybe[row][x] for x in range(9)]
 
 		# #find hidden pairs
+		digit_dict = dict()
+		for digit in range(1,10):
+			inds = [i for i in range(9) if digit in maycol[i]]
+			count = len(inds)
+			digit_dict[digit] = inds
+
+		#find match
+		for i in range(1,10):
+			#numbers NOT indices of block
+			match =[j for j in range(i,10) if digit_dict[i]==digit_dict[j]] 
+			if len(match) == len(digit_dict[i]):
+				#readjust for block
+				for x in range(9):
+					if maycol[x].intersection(set(match)) == set(match):
+						maycol[x] = set(match)
+
+		digit_dict = dict()
+		for digit in range(1,10):
+			inds = [i for i in range(9) if digit in mayrow[i]]
+			count = len(inds)
+			digit_dict[digit] = inds
+
+		#find match
+		for i in range(1,10):
+			#numbers NOT indices of block
+			match =[j for j in range(i,10) if digit_dict[i]==digit_dict[j]] 
+			if len(match) == len(digit_dict[i]):
+				#readjust for block
+				for x in range(9):
+					if mayrow[x].intersection(set(match)) == set(match):
+						mayrow[x] = set(match)
+
+		# #WRONG (but keeping it)
 		# for i in maycol:
 		# 	diff = [i.difference(j) for j in maycol if len(i.difference(j))>1]
 		# 	# print('diff',diff)
@@ -365,13 +396,12 @@ class Candidate(Board):
 						if digit in self.maybe[row+p][col+q]:
 							self.maybe[row+p][col+q].discard(digit)
 							# print('d {} from {}'.format(digit, [row+p, col+q]))
-#	
-#
-#
-#
-#
-#
-#
+
+	def xWing(self):
+		pass
+
+
+
 class SudokuSolver():
 	#this guy basically connects the candidate and solution
 	def __init__(self, board):
@@ -387,11 +417,6 @@ class SudokuSolver():
 			pass
 		counter = 0
 		while True:
-			#need a loop which stops when maybe grid doesn't change anymore
-			counter +=1
-			if counter > 1000: 
-				print(counter)
-
 			mock = copy.deepcopy(self.candidate.maybe)
 			self.oneLoop()
 			if mock == self.candidate.maybe: break
@@ -399,15 +424,15 @@ class SudokuSolver():
 	def print(self, _opt = False):
 		#_opt 0: no print / 1: print solution / 2: print candidate
 		if bool(_opt) != True: return None
-		self.solution.print()
-		if _opt == '2':
-			self.candidate.print(2)
+		if _opt =='1': self.solution.print()
+		if _opt =='2': self.candidate.print(2)
 		print('sudoku_complete()', self.solution.isLglSdk(1))
 
 	def oneLoop(self):
 		self.candidate.elimAll(self.solution)
 		self.logicBlkAll()
 		self.logicRCAll()
+		self.candidate.xWing()
 		self.updateGrid()
 
 	def logicBlkAll(self):
